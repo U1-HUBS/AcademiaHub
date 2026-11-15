@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore { match /databases/{db}/documents {
+  function signedIn(){return request.auth != null;} function role(r){return signedIn() && request.auth.token.role == r;} function staff(){return role('registrar') || role('chair');}
+  match /users/{uid}{allow read: if signedIn() && (uid==request.auth.uid || role('registrar')); allow write: if role('registrar');}
+  match /students/{id}{allow read: if role('registrar') || (role('student') && resource.data.uid==request.auth.uid) || (role('chair') && resource.data.programId==request.auth.token.programId); allow write: if role('registrar');}
+  match /programs/{id}{allow read: if signedIn(); allow write: if role('registrar');}
+  match /curricula/{id}{allow read: if signedIn(); allow write: if role('registrar');}
+  match /subjects/{id}{allow read: if signedIn(); allow write: if role('registrar');}
+  match /terms/{id}{allow read: if signedIn(); allow write: if role('registrar');}
+  match /offerings/{id}{allow read: if signedIn(); allow create: if role('registrar') || (role('chair') && request.resource.data.programId==request.auth.token.programId); allow update,delete: if role('registrar') || (role('chair') && resource.data.programId==request.auth.token.programId);}
+  match /registrations/{id}{allow read: if role('registrar') || (role('student') && resource.data.studentUid==request.auth.uid) || (role('chair') && resource.data.programId==request.auth.token.programId); allow write: if false;}
+  match /enrollments/{id}{allow read: if signedIn(); allow write: if false;}
+  match /gradeAttempts/{id}{allow read: if signedIn(); allow write: if role('teacher') || role('chair');}
+  match /payments/{id}{allow read: if role('registrar') || (role('student') && resource.data.studentUid==request.auth.uid) || (role('chair') && resource.data.programId==request.auth.token.programId); allow create: if role('registrar') || (role('student') && request.resource.data.studentUid==request.auth.uid); allow update: if role('registrar');}
+  match /fees/{id}{allow read: if role('registrar') || (role('student') && resource.data.studentUid==request.auth.uid) || (role('chair') && resource.data.programId==request.auth.token.programId); allow write: if role('registrar');}
+  match /announcements/{id}{allow read: if signedIn(); allow create,update,delete: if role('registrar') || role('chair');}
+  match /{document=**}{allow read,write: if false;}
+}}

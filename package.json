@@ -1,0 +1,24 @@
+{
+  "name": "school-enrollment",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "emulators": "npx firebase-tools emulators:start --project school-enrollment-demo --import=./emulator-data --export-on-exit",
+    "seed": "node scripts/seed-emulator.mjs"
+  },
+  "dependencies": {
+    "firebase": "^12.4.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "firebase-admin": "^14.5.1",
+    "vite": "^6.0.5"
+  }
+}
