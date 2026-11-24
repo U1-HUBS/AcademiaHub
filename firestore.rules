@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasPortalAccess() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().status == 'active' &&
+        getUserData().get('mustChangePassword', false) == false &&
+        (getUserData().get('credentialsValidAfter', 0) == 0 ||
+          request.auth.token.auth_time > getUserData().credentialsValidAfter) &&
+        (getUserData().get('studentIdLogin', false) == false ||
+          request.auth.token.get('email', '') == getUserData().studentAuthEmail);
+    }
+
+    function isRegistrar() {
+      return hasPortalAccess() && getUserData().role == 'registrar';
+    }
+
+    function isProgramChair() {
+      return hasPortalAccess() && getUserData().role == 'program_chair';
+    }
+
+    function isTeacher() {
+      return hasPortalAccess() && getUserData().role == 'teacher';
+    }
+
+    function isStudent() {
+      return hasPortalAccess() && getUserData().role == 'student';
+    }
+
+    function isStaff() {
+      return hasPortalAccess() && getUserData().role in ['registrar', 'program_chair', 'teacher'];
+    }
+
+    match /system/bootstrap {
+      // Free-plan first-admin bootstrap. The client must create this marker
+      // atomically with the matching Registrar profile.
+      allow create: if isAuthenticated() &&
+        request.resource.data.registrarUid == request.auth.uid &&
+        !exists(/databases/$(database)/documents/system/bootstrap);
+      allow read, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      // The signed-in user can read the gate even when other portal access is blocked.
+      allow get: if (isAuthenticated() && userId == request.auth.uid) || isStaff();
+      allow list: if isStaff();
+      allow create: if isAuthenticated() && userId == request.auth.uid &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.role == 'registrar' &&
+        request.resource.data.status == 'active' &&
+        getAfter(/databases/$(database)/documents/system/bootstrap).data.registrarUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Academic Programs & Sections
+    match /programs/{programId} {
+      allow read: if hasPortalAccess();
+      allow write: if isRegistrar();
+    }
+    
+    match /sections/{sectionId} {
+      allow read: if hasPortalAccess();
+      allow write: if isRegistrar();
+    }
+    
+    // Subjects
+    match /subjects/{subjectId} {
+      allow read: if hasPortalAccess();
+      allow write: if isRegistrar();
+    }
+    
+    // Master Class Schedules
+    match /schedules/{scheduleId} {
+      allow read: if hasPortalAccess();
+      // Registrar can create, update, delete schedules
+      allow create, delete: if isRegistrar();
+      // Program Chair can only update enrolledStudentIds for schedules in their program
+      allow update: if isRegistrar() || 
+        (isProgramChair() && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledStudentIds']) &&
+         resource.data.programId == getUserData().programId);
+    }
+    
+    // Student Enrollment records
+    match /enrollments/{enrollmentId} {
+      allow read: if hasPortalAccess();
+      allow create, update: if false;
+      allow delete: if isRegistrar();
+    }
+    
+    // Attendance records
+    match /attendance/{attendanceId} {
+      allow read: if hasPortalAccess();
+      allow create, update: if isRegistrar() || 
+        (isTeacher() && request.resource.data.takenBy == request.auth.uid);
+      allow delete: if isRegistrar();
+    }
+    
+    // Assessments & Activities
+    match /assessments/{assessmentId} {
+      allow read: if hasPortalAccess();
+      allow create, update: if isRegistrar() || isTeacher();
+      allow delete: if isRegistrar() || (isTeacher() && resource.data.createdBy == request.auth.uid);
+    }
+    
+    // Student Submissions
+    match /submissions/{submissionId} {
+      allow read: if hasPortalAccess();
+      allow create: if isStudent() && request.resource.data.studentId == request.auth.uid;
+      allow update: if isRegistrar() || isTeacher() || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow delete: if isRegistrar();
+    }
+    
+    // Grades
+    match /grades/{gradeId} {
+      allow read: if hasPortalAccess();
+      allow write: if isRegistrar() || isTeacher();
+    }
+
+    // Student Ledgers
+    match /ledgers/{ledgerId} {
+      allow read: if hasPortalAccess() && (isRegistrar() || request.auth.uid == ledgerId);
+      allow write: if isRegistrar();
+    }
+
+    // Announcements
+    match /announcements/{announcementId} {
+      allow read: if hasPortalAccess();
+      allow create: if isRegistrar() || isProgramChair() || isTeacher();
+      allow update, delete: if hasPortalAccess() && (isRegistrar() || resource.data.authorId == request.auth.uid);
+    }
+  }
+}
