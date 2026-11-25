@@ -1,6 +1,7 @@
 import { Schedule } from '../types';
 import { fetchCollection, fetchDocById, saveDoc, updateDocById, deleteDocById } from './storage';
 import { checkScheduleConflict } from './scheduleConflict';
+import { reconcileStudentLedgerSecure } from './ledgerAutomation';
 
 export async function getAllSchedules(): Promise<Schedule[]> {
   return fetchCollection<Schedule>('schedules');
@@ -105,6 +106,7 @@ export async function addStudentToSchedule(scheduleId: string, studentId: string
 
   const updatedIds = [...sched.enrolledStudentIds, studentId];
   await updateDocById('schedules', scheduleId, { enrolledStudentIds: updatedIds });
+  await reconcileAfterScheduleChange(sched, studentId);
 }
 
 /**
@@ -116,4 +118,13 @@ export async function removeStudentFromSchedule(scheduleId: string, studentId: s
 
   const updatedIds = sched.enrolledStudentIds.filter(id => id !== studentId);
   await updateDocById('schedules', scheduleId, { enrolledStudentIds: updatedIds });
+  await reconcileAfterScheduleChange(sched, studentId);
+}
+
+async function reconcileAfterScheduleChange(schedule: Schedule, studentId: string) {
+  const secure = await reconcileStudentLedgerSecure(studentId, schedule.academicYear, schedule.semester);
+  if (!secure) {
+    const { recalculateStudentLedger } = await import('./ledgerService');
+    await recalculateStudentLedger(studentId, schedule.academicYear, schedule.semester, true).catch(() => undefined);
+  }
 }

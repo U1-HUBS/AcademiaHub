@@ -86,6 +86,7 @@ const initialMap: Record<string, any[]> = {
   programs: INITIAL_PROGRAMS,
   sections: INITIAL_SECTIONS,
   subjects: INITIAL_SUBJECTS,
+  curriculums: [],
   schedules: INITIAL_SCHEDULES,
   enrollments: INITIAL_ENROLLMENTS,
   attendance: INITIAL_ATTENDANCE,

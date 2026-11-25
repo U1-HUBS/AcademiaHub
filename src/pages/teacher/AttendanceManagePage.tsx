@@ -284,44 +284,32 @@ export const AttendanceManagePage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setStudentStatus(st.uid, 'present')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                            current.status === 'present'
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
+                          style={{ backgroundColor: current.status === 'present' ? '#142D59' : '#FFFFFF', color: current.status === 'present' ? '#FFFFFF' : '#142D59', borderColor: '#142D59' }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]"
                         >
                           Present
                         </button>
                         <button
                           type="button"
                           onClick={() => setStudentStatus(st.uid, 'late')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                            current.status === 'late'
-                              ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
+                          style={{ backgroundColor: current.status === 'late' ? '#2563EB' : '#FFFFFF', color: current.status === 'late' ? '#FFFFFF' : '#142D59', borderColor: current.status === 'late' ? '#2563EB' : '#142D59' }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]"
                         >
                           Late
                         </button>
                         <button
                           type="button"
                           onClick={() => setStudentStatus(st.uid, 'absent')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                            current.status === 'absent'
-                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
+                          style={{ backgroundColor: current.status === 'absent' ? '#142D59' : '#FFFFFF', color: current.status === 'absent' ? '#FFFFFF' : '#142D59', borderColor: '#142D59' }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]"
                         >
                           Absent
                         </button>
                         <button
                           type="button"
                           onClick={() => setStudentStatus(st.uid, 'excused')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                            current.status === 'excused'
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
+                          style={{ backgroundColor: current.status === 'excused' ? '#2563EB' : '#FFFFFF', color: current.status === 'excused' ? '#FFFFFF' : '#142D59', borderColor: current.status === 'excused' ? '#2563EB' : '#142D59' }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]"
                         >
                           Excused
                         </button>

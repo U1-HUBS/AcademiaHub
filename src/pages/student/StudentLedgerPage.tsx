@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getStudentLedger, initializeStudentLedger } from '../../services/ledgerService';
+import { getStudentLedger, initializeStudentLedger, recalculateStudentLedger } from '../../services/ledgerService';
 import { StudentLedger } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -37,6 +37,10 @@ export const StudentLedgerPage: React.FC = () => {
         // Auto-initialize default student ledger
         data = await initializeStudentLedger();
       }
+      // Subject assignments can change after the ledger snapshot was created.
+      // Reconcile in memory so students see the current assessment without
+      // attempting a ledger write (only the registrar may persist recalculations).
+      data = await recalculateStudentLedger(data.studentId, data.academicYear, data.semester, false);
       setLedger(data);
     } catch (err: any) {
       console.warn('Failed to load ledger:', err);
@@ -162,6 +166,19 @@ export const StudentLedgerPage: React.FC = () => {
         </div>
 
         {/* Fee Assessment Summary Breakdown */}
+        {ledger && (
+          <div>
+            <h3 className="font-bold text-sm text-[#142D59] mb-3">Officially Enrolled Subjects</h3>
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="bg-slate-50 text-slate-700 uppercase text-xs font-semibold"><tr><th className="py-2.5 px-4">Subject</th><th className="py-2.5 px-4 text-center">Units</th><th className="py-2.5 px-4 text-right">Tuition</th><th className="py-2.5 px-4 text-right">Laboratory</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">{(ledger.subjectCharges || []).map(item => <tr key={item.subjectId}><td className="py-3 px-4"><strong>{item.subjectCode}</strong><div className="text-[11px] text-slate-500">{item.subjectTitle}</div></td><td className="py-3 px-4 text-center">{item.units}</td><td className="py-3 px-4 text-right">{formatCurrency(item.tuition)}</td><td className="py-3 px-4 text-right">{formatCurrency(item.laboratory)}</td></tr>)}</tbody>
+              </table>
+              {!(ledger.subjectCharges || []).length && <p className="py-5 text-center text-sm text-slate-600">No subject charges are currently assessed.</p>}
+            </div>
+          </div>
+        )}
+
         {ledger && (
           <div>
             <h3 className="font-bold text-sm text-[#142D59] mb-3">Tuition & Fee Assessment Breakdown</h3>

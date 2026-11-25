@@ -23,11 +23,11 @@ const sizes: Record<Size, string> = {
 };
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-primary text-white hover:bg-primary-dark',
-  accent: 'bg-primary-light text-white hover:bg-primary',
-  outline: 'border border-slate-300 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-primary',
-  ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700',
+  primary: 'bg-navy text-white',
+  accent: 'bg-royal text-white',
+  outline: 'border border-navy bg-white text-navy',
+  ghost: 'text-navy',
+  danger: 'bg-navy text-white',
 };
 
 function buttonClassName(variant: Variant, size: Size, className?: string) {

@@ -15,7 +15,6 @@ import {
   CalendarDays,
   ShieldCheck,
   UserPlus,
-  PlusCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DashboardContent } from '../../components/ui/DashboardContent';
@@ -50,14 +49,13 @@ export const RegistrarDashboard: React.FC = () => {
   const recentUsers = [...users].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)).slice(0, 5);
 
   return (
-    <div className="space-y-6">
+    <div className="registrar-dashboard space-y-6">
       {/* Page Title & Action */}
       <PageHeader
-        variant="dashboard"
         title="Registrar Dashboard"
         subtitle="Manage enrollment, accounts, programs, and class schedules."
         badge={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-navy">
             <ShieldCheck className="size-3.5" aria-hidden="true" />
             <span>Master Admin</span>
           </span>
@@ -67,16 +65,13 @@ export const RegistrarDashboard: React.FC = () => {
             <ButtonLink to="/registrar/users" variant="outline" size="sm" icon={<UserPlus className="w-4 h-4" />}>
               Add User
             </ButtonLink>
-            <ButtonLink to="/registrar/schedules" variant="primary" size="sm" icon={<PlusCircle className="w-4 h-4" />}>
-              New Schedule
-            </ButtonLink>
           </>
         }
       />
 
       <DashboardContent loading={loading} failed={failed} onRetry={retry}>
         {/* KPI Stats Grid (8px grid: gap-6) */}
-        <div className="grid gap-3 min-[360px]:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        <div className="grid gap-4 min-[360px]:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Active Students"
             value={studentCount}
@@ -108,19 +103,19 @@ export const RegistrarDashboard: React.FC = () => {
         </div>
 
         {/* Overview Cards */}
-        <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-12">
           {/* Programs Overview */}
-          <div className="xl:col-span-1 portal-panel p-4 sm:p-5">
+          <section className="xl:col-span-5 portal-panel p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <h2 className="text-base font-semibold text-primary">Academic Programs</h2>
-              <Link to="/registrar/programs-sections" className="rounded text-sm font-semibold text-primary-light hover:underline">
+              <div><h2 className="text-base font-bold text-navy">Academic Programs</h2><p className="mt-1 text-xs text-slate-600">Programs currently maintained by the registrar.</p></div>
+              <Link to="/registrar/programs-sections" className="rounded text-sm font-semibold text-royal hover:underline">
                 Manage
               </Link>
             </div>
-            <div className="mt-4 space-y-3">
-              {programs.length === 0 && <p className="py-3 text-sm text-slate-600">No academic programs yet.</p>}
+            <div className="mt-5 space-y-3">
+              {programs.length === 0 && <p className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-600">No academic programs yet.</p>}
               {programs.map(prog => (
-                <div key={prog.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex flex-col gap-1">
+                <div key={prog.id} className="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-[#142D59]">{prog.code}</span>
                     <Badge variant={prog.active ? "success" : "neutral"}>{prog.active ? "Active" : "Inactive"}</Badge>
@@ -130,24 +125,24 @@ export const RegistrarDashboard: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Recently Created Accounts Table */}
-          <div className="xl:col-span-2 portal-panel p-4 sm:p-5 flex flex-col">
+          <section className="xl:col-span-7 portal-panel flex min-w-0 flex-col p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
-                <h2 className="text-base font-semibold text-primary">Recently Provisioned Accounts</h2>
-                <p className="text-xs text-slate-500">Most recently created accounts</p>
+                <h2 className="text-base font-bold text-navy">Recently Provisioned Accounts</h2>
+                <p className="mt-1 text-xs text-slate-600">The latest accounts created by the registrar.</p>
               </div>
-              <Link to="/registrar/users" className="rounded text-sm font-semibold text-primary-light hover:underline">
+              <Link to="/registrar/users" className="rounded text-sm font-semibold text-royal hover:underline">
                 View All Users
               </Link>
             </div>
 
-            <div className="mt-4 overflow-x-auto rounded" role="region" aria-label="Recent accounts" tabIndex={0}>
+            <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200" role="region" aria-label="Recent accounts" tabIndex={0}>
               <table className="w-full text-left text-xs">
                 <caption className="sr-only">Recently provisioned accounts</caption>
-                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold">
+                <thead className="border-b border-slate-200 bg-white text-navy uppercase font-semibold tracking-wide">
                   <tr>
                     <th scope="col" className="py-2.5 px-3">User</th>
                     <th scope="col" className="py-2.5 px-3">ID Number</th>
@@ -156,9 +151,9 @@ export const RegistrarDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {recentUsers.length === 0 && <tr><td colSpan={4} className="p-4 text-sm text-slate-600">No accounts to show.</td></tr>}
+                  {recentUsers.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-sm text-slate-600">No accounts to show.</td></tr>}
                   {recentUsers.map(u => (
-                    <tr key={u.uid} className="hover:bg-slate-50">
+                    <tr key={u.uid} className="border-b border-slate-100 last:border-0 hover:bg-blue-50">
                       <td className="py-3 px-3">
                         <div className="font-semibold text-slate-800">{u.fullName}</div>
                         <div className="text-xs text-slate-600">{u.email}</div>
@@ -177,7 +172,7 @@ export const RegistrarDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         </div>
       </DashboardContent>
     </div>

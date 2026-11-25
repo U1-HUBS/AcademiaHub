@@ -32,7 +32,7 @@ export const StudentChecklistPage: React.FC = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const data = await getStudentCurriculumProgress(user.uid, user.programCode || 'BSCS');
+      const data = await getStudentCurriculumProgress(user.uid, user.programCode, user.studentType);
       setChecklist(data);
     } catch (err: any) {
       console.warn('Failed to load subject checklist:', err);
@@ -112,7 +112,7 @@ export const StudentChecklistPage: React.FC = () => {
                 Degree Completion Status
               </span>
               <h3 className="text-xl font-extrabold text-[#142D59] mt-0.5">
-                {user?.programCode || 'BSCS'} Curriculum Progress: {checklist.progressPercentage}%
+                {user?.programCode || 'Your'} Curriculum Progress: {checklist.progressPercentage}%
               </h3>
             </div>
             <div className="text-right">
@@ -237,8 +237,8 @@ export const StudentChecklistPage: React.FC = () => {
                                 <td className="py-3 px-4 text-center font-semibold text-slate-700">{sub.units}</td>
                                 <td className="py-3 px-4 text-slate-500">
                                   {sub.prerequisites && sub.prerequisites.length > 0 ? (
-                                    <span className="text-xs text-blue-700 font-mono font-medium">
-                                      {sub.prerequisites.join(', ')}
+                                    <span className="text-xs text-blue-700 font-medium">
+                                      {sub.prerequisites.map(code => checklist.subjects.find(subject => subject.code.toUpperCase() === code.toUpperCase())?.title || code).join(', ')}
                                     </span>
                                   ) : (
                                     <span className="text-slate-400 text-xs">—</span>

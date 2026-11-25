@@ -7,6 +7,7 @@ import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   getAllSchedules,
   createSchedule,
@@ -14,34 +15,38 @@ import {
   deleteSchedule,
 } from '../../services/scheduleService';
 import { getAllSubjects } from '../../services/subjectService';
-import { getAllSections, getAllPrograms } from '../../services/programService';
+import { getAllPrograms } from '../../services/programService';
 import { getAllUsers } from '../../services/userService';
-import { Schedule, Subject, Section, Program, UserProfile } from '../../types';
+import { getAllEnrollments } from '../../services/enrollmentService';
+import { Schedule, Subject, Program, UserProfile, EnrollmentRecord } from '../../types';
 import { CalendarDays, Plus, Edit, Trash2, AlertTriangle, Clock, MapPin, User } from 'lucide-react';
 
 export const ClassSchedulingPage: React.FC = () => {
+  const { user } = useAuth();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
+  const [students, setStudents] = useState<UserProfile[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [selectedRoster, setSelectedRoster] = useState<Schedule | null>(null);
 
   // Form State
   const [subjectId, setSubjectId] = useState('');
   const [teacherId, setTeacherId] = useState('');
   const [programId, setProgramId] = useState('');
-  const [sectionId, setSectionId] = useState('');
+  const [sectionNameInput, setSectionNameInput] = useState('');
   const [room, setRoom] = useState('');
   const [selectedDays, setSelectedDays] = useState<string[]>(['Monday', 'Wednesday']);
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('09:30');
-  const [maxCapacity, setMaxCapacity] = useState(35);
+  const [maxCapacity, setMaxCapacity] = useState<number | ''>(35);
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [semester, setSemester] = useState('1st Semester');
   const [conflictError, setConflictError] = useState<string | null>(null);
@@ -53,23 +58,26 @@ export const ClassSchedulingPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [schedList, subjList, secList, progList, userList] = await Promise.all([
+      const [schedList, subjList, progList, userList, enrollmentList] = await Promise.all([
         getAllSchedules(),
         getAllSubjects(),
-        getAllSections(),
         getAllPrograms(),
         getAllUsers(),
+        getAllEnrollments(),
       ]);
-      setSchedules(schedList);
-      setSubjects(subjList);
-      setSections(secList);
-      setPrograms(progList);
+      const visibleProgramId = user?.role === 'program_chair' ? user.programId : undefined;
+      const visiblePrograms = visibleProgramId ? progList.filter(program => program.id === visibleProgramId) : progList;
+      setSchedules(visibleProgramId ? schedList.filter(schedule => schedule.programId === visibleProgramId) : schedList);
+      setSubjects(visibleProgramId ? subjList.filter(subject => subject.programId === visibleProgramId) : subjList);
+      setPrograms(visiblePrograms);
       setTeachers(userList.filter(u => u.role === 'teacher' && u.status === 'active'));
+      setStudents(userList.filter(u => u.role === 'student' && u.status === 'active' && (!visibleProgramId || u.programId === visibleProgramId)));
+      setEnrollments(enrollmentList);
     } finally {
       setLoading(false);
     }
@@ -80,7 +88,7 @@ export const ClassSchedulingPage: React.FC = () => {
     setSubjectId(subjects[0]?.id || '');
     setTeacherId(teachers[0]?.uid || '');
     setProgramId(programs[0]?.id || '');
-    setSectionId(sections[0]?.id || '');
+    setSectionNameInput('');
     setRoom('Room 201');
     setSelectedDays(['Monday', 'Wednesday']);
     setStartTime('08:00');
@@ -95,7 +103,7 @@ export const ClassSchedulingPage: React.FC = () => {
     setSubjectId(s.subjectId);
     setTeacherId(s.teacherId);
     setProgramId(s.programId);
-    setSectionId(s.sectionId);
+    setSectionNameInput(s.sectionName);
     setRoom(s.room);
     setSelectedDays(s.days);
     setStartTime(s.startTime);
@@ -123,9 +131,9 @@ export const ClassSchedulingPage: React.FC = () => {
     const subject = subjects.find(s => s.id === subjectId);
     const teacher = teachers.find(t => t.uid === teacherId);
     const program = programs.find(p => p.id === programId);
-    const section = sections.find(s => s.id === sectionId);
+    const sectionName = sectionNameInput.trim();
 
-    if (!subject || !teacher || !program || !section) {
+    if (!subject || !teacher || !program || !sectionName) {
       error('Please select all required schedule parameters.');
       return;
     }
@@ -147,8 +155,8 @@ export const ClassSchedulingPage: React.FC = () => {
           teacherName: teacher.fullName,
           programId,
           programCode: program.code,
-          sectionId,
-          sectionName: section.name,
+          sectionId: sectionName,
+          sectionName,
           room: room.trim(),
           days: selectedDays,
           startTime,
@@ -157,7 +165,7 @@ export const ClassSchedulingPage: React.FC = () => {
           academicYear,
           semester,
         });
-        success(`Schedule for ${subject.code} (${section.name}) updated.`);
+        success(`Schedule for ${subject.code} (${sectionName}) updated.`);
       } else {
         await createSchedule({
           subjectId,
@@ -168,8 +176,8 @@ export const ClassSchedulingPage: React.FC = () => {
           teacherName: teacher.fullName,
           programId,
           programCode: program.code,
-          sectionId,
-          sectionName: section.name,
+          sectionId: sectionName,
+          sectionName,
           room: room.trim(),
           days: selectedDays,
           startTime,
@@ -286,7 +294,7 @@ export const ClassSchedulingPage: React.FC = () => {
       key: 'actions',
       header: 'Actions',
       render: (s: Schedule) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5" onClick={event => event.stopPropagation()}>
           <Button
             variant="ghost"
             size="sm"
@@ -329,7 +337,15 @@ export const ClassSchedulingPage: React.FC = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         searchPlaceholder="Search schedule by subject, teacher, section, or room..."
+        onRowClick={setSelectedRoster}
       />
+
+      <Modal maxWidth="5xl" isOpen={Boolean(selectedRoster)} onClose={() => setSelectedRoster(null)} title={`${selectedRoster?.subjectCode || 'Subject'} enrolled students`} subtitle={`${selectedRoster?.subjectTitle || ''} · ${selectedRoster?.sectionName || ''}`}>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between rounded-lg bg-blue-50 px-5 py-4 text-base text-primary"><span>Enrolled students</span><strong>{selectedRoster?.enrolledStudentIds.length || 0} / {selectedRoster?.maxCapacity || 0}</strong></div>
+          {selectedRoster?.enrolledStudentIds.length ? <div className="space-y-4">{selectedRoster.enrolledStudentIds.map(studentId => { const student = students.find(item => item.uid === studentId); const enrollment = enrollments.find(item => item.studentId === studentId && item.programId === selectedRoster.programId); return <div key={studentId} className="rounded-xl border border-slate-200 bg-white p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-bold text-primary">{student?.fullName || enrollment?.studentName || 'Student record unavailable'}</p><p className="text-base text-slate-600">{student?.idNumber || enrollment?.studentIdNumber || studentId}</p></div><Badge variant="navy">{enrollment?.status || 'Enrolled'}</Badge></div><div className="mt-5 grid gap-5 text-base sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7"><div className="xl:col-span-2"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</p><p className="whitespace-nowrap text-slate-800">{student?.email || enrollment?.studentEmail || '—'}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</p><p className="text-slate-800">{student?.phone || '—'}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Program</p><p className="text-slate-800">{student?.programCode || enrollment?.programCode || '—'}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Year level</p><p className="text-slate-800">Year {student?.yearLevel || enrollment?.yearLevel || '—'}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Student type</p><p className="capitalize text-slate-800">{student?.studentType || enrollment?.studentType || '—'}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Section</p><p className="text-slate-800">{enrollment?.sectionName || student?.sectionName || selectedRoster.sectionName || '—'}</p></div></div></div>; })}</div> : <p className="rounded-lg border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-600">No students are enrolled in this subject yet.</p>}
+        </div>
+      </Modal>
 
       {/* Modal with Conflict Detection */}
       <Modal
@@ -337,7 +353,7 @@ export const ClassSchedulingPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title={editingSchedule ? 'Modify Class Schedule' : 'Create Class Schedule'}
         subtitle="Automatic Conflict & Room Capacity Validation"
-        maxWidth="xl"
+        maxWidth="4xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {conflictError && (
@@ -347,7 +363,7 @@ export const ClassSchedulingPage: React.FC = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Select
               label="Subject Offering"
               value={subjectId}
@@ -375,7 +391,7 @@ export const ClassSchedulingPage: React.FC = () => {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Select
               label="Program"
               value={programId}
@@ -389,23 +405,16 @@ export const ClassSchedulingPage: React.FC = () => {
               ))}
             </Select>
 
-            <Select
+            <Input
               label="Class Section"
-              value={sectionId}
-              onChange={e => setSectionId(e.target.value)}
-            >
-              <option value="">Select Section...</option>
-              {sections
-                .filter(s => !programId || s.programId === programId)
-                .map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </Select>
+              placeholder="e.g. BSIT 1-A or Evening 2-B"
+              value={sectionNameInput}
+              onChange={e => setSectionNameInput(e.target.value)}
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Input
               label="Room / Laboratory"
               placeholder="e.g. Lab 301, Room 204"
@@ -419,7 +428,7 @@ export const ClassSchedulingPage: React.FC = () => {
               min={5}
               max={100}
               value={maxCapacity}
-              onChange={e => setMaxCapacity(Number(e.target.value))}
+              onChange={e => setMaxCapacity(e.target.value === '' ? '' : Number(e.target.value))}
               required
             />
           </div>
@@ -450,7 +459,7 @@ export const ClassSchedulingPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Input
               label="Start Time"
               type="time"

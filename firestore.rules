@@ -29,6 +29,12 @@ service cloud.firestore {
       return hasPortalAccess() && getUserData().role == 'program_chair';
     }
 
+    function ownsProgram(programId, programCode) {
+      return isProgramChair() &&
+        ((getUserData().get('programId', '') != '' && programId == getUserData().programId) ||
+         (getUserData().get('programCode', '') != '' && programCode == getUserData().programCode));
+    }
+
     function isTeacher() {
       return hasPortalAccess() && getUserData().role == 'teacher';
     }
@@ -54,11 +60,31 @@ service cloud.firestore {
       // The signed-in user can read the gate even when other portal access is blocked.
       allow get: if (isAuthenticated() && userId == request.auth.uid) || isStaff();
       allow list: if isStaff();
-      allow create: if isAuthenticated() && userId == request.auth.uid &&
+      allow create: if (isAuthenticated() && userId == request.auth.uid &&
         request.resource.data.uid == request.auth.uid &&
         request.resource.data.role == 'registrar' &&
         request.resource.data.status == 'active' &&
-        getAfter(/databases/$(database)/documents/system/bootstrap).data.registrarUid == request.auth.uid;
+        getAfter(/databases/$(database)/documents/system/bootstrap).data.registrarUid == request.auth.uid) ||
+        (isRegistrar() && request.resource.data.uid == userId &&
+         request.resource.data.role in ['registrar', 'program_chair', 'teacher'] &&
+         request.resource.data.status == 'active' &&
+         request.resource.data.mustChangePassword == true &&
+         request.resource.data.authProvisioned == true &&
+         request.resource.data.email is string);
+      allow create: if isRegistrar() && request.resource.data.uid == userId &&
+        request.resource.data.role == 'student' && request.resource.data.status == 'active' &&
+        request.resource.data.mustChangePassword == true && request.resource.data.studentIdLogin == true;
+      allow update: if isAuthenticated() && userId == request.auth.uid &&
+        resource.data.status == 'active' &&
+        resource.data.mustChangePassword == true &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword', 'updatedAt']) &&
+        request.resource.data.mustChangePassword == false;
+      allow update: if isRegistrar() &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'firstName', 'lastName', 'fullName', 'email', 'phone', 'role', 'programId',
+          'programCode', 'status', 'sectionId', 'sectionName', 'updatedAt'
+        ]);
       allow update, delete: if false;
     }
 
@@ -78,23 +104,28 @@ service cloud.firestore {
       allow read: if hasPortalAccess();
       allow write: if isRegistrar();
     }
+
+    match /curriculums/{curriculumId} {
+      allow read: if hasPortalAccess();
+      allow write: if isRegistrar();
+    }
     
     // Master Class Schedules
     match /schedules/{scheduleId} {
       allow read: if hasPortalAccess();
       // Registrar can create, update, delete schedules
-      allow create, delete: if isRegistrar();
+      allow create: if isRegistrar() || ownsProgram(request.resource.data.programId, request.resource.data.programCode);
+      allow delete: if isRegistrar() || ownsProgram(resource.data.programId, resource.data.programCode);
       // Program Chair can only update enrolledStudentIds for schedules in their program
-      allow update: if isRegistrar() || 
-        (isProgramChair() && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledStudentIds']) &&
-         resource.data.programId == getUserData().programId);
+      allow update: if isRegistrar() ||
+        ownsProgram(resource.data.programId, resource.data.programCode) &&
+        ownsProgram(request.resource.data.programId, request.resource.data.programCode);
     }
     
     // Student Enrollment records
     match /enrollments/{enrollmentId} {
       allow read: if hasPortalAccess();
-      allow create, update: if false;
+      allow create, update: if isRegistrar();
       allow delete: if isRegistrar();
     }
     
@@ -130,7 +161,18 @@ service cloud.firestore {
     // Student Ledgers
     match /ledgers/{ledgerId} {
       allow read: if hasPortalAccess() && (isRegistrar() || request.auth.uid == ledgerId);
+      allow create: if isRegistrar() || (isStudent() && request.auth.uid == ledgerId);
+      allow update, delete: if isRegistrar();
+    }
+
+    match /feeConfigurations/{configId} {
+      allow read: if isRegistrar() || isStudent();
       allow write: if isRegistrar();
+    }
+
+    match /feeConfigurationHistory/{historyId} {
+      allow read, create: if isRegistrar();
+      allow update, delete: if false;
     }
 
     // Announcements
@@ -138,6 +180,26 @@ service cloud.firestore {
       allow read: if hasPortalAccess();
       allow create: if isRegistrar() || isProgramChair() || isTeacher();
       allow update, delete: if hasPortalAccess() && (isRegistrar() || resource.data.authorId == request.auth.uid);
+    }
+
+    match /subjectOfferings/{offeringId} {
+      allow read: if hasPortalAccess();
+      allow create, update, delete: if isRegistrar() || isProgramChair();
+    }
+
+    match /registrarRequests/{requestId} {
+      allow read: if isRegistrar() || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow create: if isRegistrar() ||
+        (isStudent() && request.resource.data.studentId == request.auth.uid && request.resource.data.status == 'submitted');
+      allow update: if isRegistrar() ||
+        (isStudent() && resource.data.studentId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['details', 'updatedAt']));
+      allow delete: if isRegistrar();
+    }
+
+    match /credentialRequirements/{requirementId} {
+      allow read: if isRegistrar() || (isStudent() && resource.data.studentId == request.auth.uid);
+      allow create, update, delete: if isRegistrar();
     }
   }
 }

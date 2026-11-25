@@ -15,10 +15,27 @@ export const MyClassesPage: React.FC = () => {
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
     loadClasses();
   }, [user]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const isScheduleInProgress = (schedule: Schedule) => {
+    const day = currentTime.toLocaleDateString('en-US', { weekday: 'long' });
+    if (!schedule.days.includes(day)) return false;
+    const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
+    const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+    const start = startHour * 60 + startMinute;
+    const end = endHour * 60 + endMinute;
+    return now >= start && now < end;
+  };
 
   const loadClasses = async () => {
     if (!user) return;
@@ -32,7 +49,7 @@ export const MyClassesPage: React.FC = () => {
       setStudents(allUsers.filter(u => u.role === 'student'));
 
       if (myScheds.length > 0) {
-        setSelectedSchedule(myScheds[0]);
+        setSelectedSchedule(myScheds.find(isScheduleInProgress) || myScheds[0]);
       }
     } finally {
       setLoading(false);
@@ -61,19 +78,20 @@ export const MyClassesPage: React.FC = () => {
 
           {schedules.map(sc => {
             const isSelected = selectedSchedule?.id === sc.id;
+            const isInProgress = isScheduleInProgress(sc);
             return (
               <button
                 key={sc.id}
                 onClick={() => setSelectedSchedule(sc)}
-                className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                className={`w-full text-left p-4 rounded-2xl border ${
                   isSelected
                     ? 'bg-blue-50/80 border-[#2563EB] shadow-xs'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
+                    : 'bg-white border-slate-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-sm text-[#142D59]">{sc.subjectCode}</span>
-                  <Badge variant="navy">{sc.sectionName}</Badge>
+                  {isInProgress ? <Badge variant="navy">In progress now</Badge> : <Badge variant="navy">{sc.sectionName}</Badge>}
                 </div>
                 <h4 className="font-semibold text-xs text-slate-800 mt-1 truncate">{sc.subjectTitle}</h4>
                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 pt-2">
@@ -83,6 +101,7 @@ export const MyClassesPage: React.FC = () => {
                   </span>
                   <span className="font-semibold text-slate-700">{sc.enrolledStudentIds.length} Students</span>
                 </div>
+                {isInProgress && <p className="mt-3 border-t border-slate-200 pt-2 text-xs font-semibold text-[#142D59]">This class is currently scheduled. Attendance is ready to take.</p>}
               </button>
             );
           })}
@@ -98,6 +117,7 @@ export const MyClassesPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-[#142D59]">{selectedSchedule.subjectCode}</h3>
                     <Badge variant="navy">{selectedSchedule.sectionName}</Badge>
+                    {isScheduleInProgress(selectedSchedule) && <Badge variant="navy">Class in progress</Badge>}
                     <span className="text-xs text-slate-500 font-medium">{selectedSchedule.units} Units</span>
                   </div>
                   <p className="text-xs font-medium text-slate-700 mt-0.5">{selectedSchedule.subjectTitle}</p>

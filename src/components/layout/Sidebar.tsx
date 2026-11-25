@@ -25,10 +25,15 @@ import {
   School,
   Receipt,
   CheckSquare,
+  ShieldCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 interface SidebarProps {
   onItemClick?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 interface NavSection {
@@ -40,7 +45,7 @@ interface NavSection {
   }[];
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onItemClick }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onToggleCollapse }) => {
   const { user } = useAuth();
   const role: UserRole = user?.role || 'student';
 
@@ -62,13 +67,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onItemClick }) => {
       {
         title: 'Academic Structure',
         items: [
-          { path: '/registrar/schedules', label: 'Class Scheduling', icon: <CalendarDays className="w-4 h-4" /> },
-          { path: '/registrar/programs-sections', label: 'Programs & Sections', icon: <FolderKanban className="w-4 h-4" /> },
+          { path: '/registrar/academic', label: 'Academic Management', icon: <FolderKanban className="w-4 h-4" /> },
         ],
       },
       {
         title: 'Records & Reports',
         items: [
+          { path: '/registrar/grades', label: 'Grades & Records', icon: <FileCheck2 className="w-4 h-4" /> },
+          { path: '/registrar/requests', label: 'Student Requests', icon: <FileCheck2 className="w-4 h-4" /> },
+          { path: '/registrar/finance', label: 'Student Finance', icon: <Receipt className="w-4 h-4" /> },
+          { path: '/registrar/credentials', label: 'Student Credentials', icon: <ShieldCheck className="w-4 h-4" /> },
+          { path: '/registrar/graduation', label: 'Graduation Monitoring', icon: <GraduationCap className="w-4 h-4" /> },
           { path: '/registrar/reports', label: 'Reports & Analytics', icon: <FileBarChart className="w-4 h-4" /> },
         ],
       },
@@ -85,6 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onItemClick }) => {
         items: [
           { path: '/chair/students', label: 'Student Management', icon: <UserCheck className="w-4 h-4" /> },
           { path: '/chair/schedules', label: 'Class Scheduling', icon: <CalendarDays className="w-4 h-4" /> },
+          { path: '/chair/offerings', label: 'Offering Review', icon: <FileCheck2 className="w-4 h-4" /> },
         ],
       },
       {
@@ -150,6 +160,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onItemClick }) => {
         items: [
           { path: '/student/ledger', label: 'Account Ledger', icon: <Receipt className="w-4 h-4" /> },
           { path: '/student/checklist', label: 'Subject Checklist', icon: <CheckSquare className="w-4 h-4" /> },
+          { path: '/student/requests', label: 'Registrar Requests', icon: <FileCheck2 className="w-4 h-4" /> },
+          { path: '/student/progress', label: 'Progress & Awards', icon: <GraduationCap className="w-4 h-4" /> },
         ],
       },
       {
@@ -164,27 +176,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ onItemClick }) => {
   const sections = navSectionsByRole[role] || navSectionsByRole.student;
 
   return (
-    <aside className="portal-sidebar flex h-full w-full flex-col">
-      <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/10 px-5 pr-14 lg:pr-5">
+    <aside className="portal-sidebar relative flex h-full w-full flex-col">
+      <div className={`flex min-h-16 shrink-0 items-center border-b border-white/10 px-3 pr-14 lg:pr-3 ${collapsed ? 'justify-center' : 'gap-3'}`}>
         <div className="portal-mark grid size-9 shrink-0 place-items-center rounded-lg">
           <School className="size-5" aria-hidden="true" />
         </div>
-        <div className="min-w-0">
-          <p className="text-sm font-bold tracking-tight text-white">AcademiaHub</p>
-          <p className="mt-0.5 text-xs text-emerald-50/75">Academic System</p>
-        </div>
+        {!collapsed && <div className="min-w-0">
+          <p className="text-sm font-bold tracking-tight text-white">AUTOMATE</p>
+          <p className="mt-0.5 text-xs text-white/75">Academic System</p>
+        </div>}
+        {onToggleCollapse && !collapsed && <button type="button" onClick={onToggleCollapse} className="ml-auto grid size-9 place-items-center rounded-lg text-white" aria-label="Collapse navigation">
+          <PanelLeftClose className="size-4" aria-hidden="true" />
+        </button>}
+        {onToggleCollapse && collapsed && <button type="button" onClick={onToggleCollapse} className="absolute left-4 top-3 grid size-9 place-items-center rounded-lg text-white" aria-label="Expand navigation">
+          <PanelLeftOpen className="size-4" aria-hidden="true" />
+        </button>}
       </div>
 
       <nav aria-label="Workspace" className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-3 py-5">
         {sections.map(section => (
           <div key={section.title}>
-            <p className="mb-1.5 px-3 text-xs font-semibold text-emerald-50/65">{section.title}</p>
+            {!collapsed && <p className="mb-1.5 px-3 text-xs font-semibold text-white/70">{section.title}</p>}
             <ul className="space-y-1">
               {section.items.map(item => (
                 <li key={item.path}>
-                  <NavLink to={item.path} onClick={onItemClick} className="portal-nav-link flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium">
+                  <NavLink title={collapsed ? item.label : undefined} to={item.path} onClick={onItemClick} className={`portal-nav-link flex min-h-10 items-center rounded-lg py-2 text-sm font-medium ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'}`}>
                     <span className="shrink-0" aria-hidden="true">{item.icon}</span>
-                    <span>{item.label}</span>
+                    {!collapsed && <span>{item.label}</span>}
                   </NavLink>
                 </li>
               ))}
@@ -193,11 +211,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onItemClick }) => {
         ))}
       </nav>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-t border-white/10 px-5 py-4 text-xs text-emerald-50/75">
+      {false && <div>
         <span>A.Y. 2026–2027</span>
         <span aria-hidden="true">·</span>
         <span>1st Semester</span>
-      </div>
+      </div>}
     </aside>
   );
 };

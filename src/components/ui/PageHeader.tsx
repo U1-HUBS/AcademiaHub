@@ -18,12 +18,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   return (
     <header className={twMerge(
       'flex flex-col justify-between gap-4',
-      dashboard ? 'dashboard-heading xl:flex-row xl:items-center' : 'border-b border-slate-200 pb-4 sm:flex-row sm:items-center',
+      dashboard ? 'dashboard-heading xl:flex-row xl:items-center' : 'border-b border-slate-200 pb-5 sm:flex-row sm:items-center',
       className,
     )}>
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className={twMerge('min-w-0 break-words text-2xl font-bold tracking-tight sm:text-3xl', dashboard ? 'text-white' : 'text-primary')}>
+          <h1 className={twMerge('min-w-0 break-words text-2xl font-bold tracking-tight sm:text-3xl', dashboard ? 'text-white' : 'text-navy')}>
             {title}
           </h1>
           {badge}

@@ -6,6 +6,7 @@ import { Topbar } from './Topbar';
 
 export const AppLayout: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const menuRef = useRef<HTMLDialogElement>(null);
   const mainRef = useRef<HTMLElement>(null);
 
@@ -45,8 +46,8 @@ export const AppLayout: React.FC = () => {
         Skip to content
       </a>
 
-      <div className="no-print hidden shrink-0 lg:sticky lg:top-0 lg:block lg:h-dvh lg:w-[248px]">
-        <Sidebar />
+      <div className={`no-print hidden shrink-0 lg:sticky lg:top-0 lg:block lg:h-dvh ${sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-64'}`}>
+        <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(value => !value)} />
       </div>
 
       <dialog

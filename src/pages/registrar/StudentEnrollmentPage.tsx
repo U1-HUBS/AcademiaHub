@@ -25,7 +25,6 @@ export const StudentEnrollmentPage: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -48,7 +47,7 @@ export const StudentEnrollmentPage: React.FC = () => {
   const [programId, setProgramId] = useState('');
   const [yearLevel, setYearLevel] = useState<number>(1);
   const [sectionId, setSectionId] = useState('');
-  const [status, setStatus] = useState<EnrollmentRecord['status']>('enrolled');
+  const [studentType, setStudentType] = useState<'regular' | 'evening'>('regular');
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [semester, setSemester] = useState('1st Semester');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,7 +115,7 @@ export const StudentEnrollmentPage: React.FC = () => {
     setProgramId(programs[0]?.id || '');
     setYearLevel(1);
     setSectionId(sections.find(section => section.programId === programs[0]?.id && section.yearLevel === 1)?.id || '');
-    setStatus('enrolled');
+    setStudentType('regular');
     setIsModalOpen(true);
   };
 
@@ -128,7 +127,7 @@ export const StudentEnrollmentPage: React.FC = () => {
     setProgramId(rec.programId);
     setYearLevel(rec.yearLevel);
     setSectionId(rec.sectionId);
-    setStatus(rec.status);
+    setStudentType(rec.studentType || 'regular');
     setAcademicYear(rec.academicYear);
     setSemester(rec.semester);
     setIsModalOpen(true);
@@ -144,7 +143,7 @@ export const StudentEnrollmentPage: React.FC = () => {
         ? {studentUid: studentId, enrollmentId: editingRecord?.id}
         : {student: {firstName: studentFirstName, lastName: studentLastName, idNumber: studentNumber, email: studentEmail}};
       const result = await saveEnrollmentWithAccount({
-        ...identity, programId, yearLevel, sectionId, status, academicYear, semester,
+        ...identity, programId, yearLevel, sectionId: undefined, studentType, status: editingRecord?.status || 'enrolled', academicYear, semester,
       });
       setIsModalOpen(false);
       if (result.credentials) setCredentials(result.credentials);
@@ -162,10 +161,9 @@ export const StudentEnrollmentPage: React.FC = () => {
     setResetError('');
     setIsResetting(true);
     try {
-      const nextCredentials = await resetStudentPassword(resetTarget.studentId);
+      await resetStudentPassword(resetTarget.studentIdNumber);
       setResetTarget(null);
-      setCredentials(nextCredentials);
-      success('Student password reset.');
+      success('Password reset email sent to the student account.');
     } catch (cause) {
       setResetError(cause instanceof Error ? cause.message : 'Could not reset the password.');
     } finally {
@@ -185,13 +183,12 @@ export const StudentEnrollmentPage: React.FC = () => {
   };
 
   const filtered = enrollments.filter(e => {
-    const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
     const matchesSearch =
       e.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.studentIdNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.programCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.sectionName.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesSearch;
   });
 
   const columns = [
@@ -228,20 +225,6 @@ export const StudentEnrollmentPage: React.FC = () => {
           {e.academicYear} ({e.semester})
         </span>
       ),
-    },
-    {
-      key: 'status',
-      header: 'Enrollment Status',
-      render: (e: EnrollmentRecord) => {
-        const variantMap: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
-          enrolled: 'success',
-          regular: 'success',
-          irregular: 'warning',
-          dropped: 'danger',
-          graduated: 'info',
-        };
-        return <Badge variant={variantMap[e.status] || 'neutral'}>{e.status.toUpperCase()}</Badge>;
-      },
     },
     {
       key: 'actions',
@@ -292,23 +275,6 @@ export const StudentEnrollmentPage: React.FC = () => {
         }
       />
 
-      {/* Filter Tabs (8px rhythm: gap-2) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {['all', 'enrolled', 'regular', 'irregular', 'dropped', 'graduated'].map(st => (
-          <button
-            key={st}
-            onClick={() => setStatusFilter(st)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 ${
-              statusFilter === st
-                ? 'bg-[#142D59] text-white shadow-xs'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {st === 'all' ? 'All Statuses' : st.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
       {loading && <p className="text-sm text-slate-600" role="status">Loading records…</p>}
       <Table
         label="Student enrollments"
@@ -324,7 +290,7 @@ export const StudentEnrollmentPage: React.FC = () => {
         <AccountDialog title="Reset student password?" busy={isResetting} onClose={() => setResetTarget(null)}>
           <p className="text-sm leading-relaxed text-slate-700">
             Reset the password for <strong>{resetTarget.studentName}</strong> ({resetTarget.studentIdNumber})?
-            Their current password will stop working and they must choose a new one at sign-in.
+            Firebase will email a secure password reset link to the student account. The student can choose a new password from that link.
           </p>
           {resetError && <p role="alert" className="mt-3 text-sm text-rose-700">{resetError}</p>}
           <div className="mt-5 flex flex-wrap justify-end gap-2">
@@ -404,32 +370,9 @@ export const StudentEnrollmentPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select
-              label="Assigned Section"
-              value={sectionId}
-              onChange={e => setSectionId(e.target.value)}
-              required
-            >
-              <option value="">Select section...</option>
-              {sections
-                .filter(s => s.programId === programId && s.yearLevel === yearLevel)
-                .map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </Select>
-
-            <Select
-              label="Enrollment Status"
-              value={status}
-              onChange={e => setStatus(e.target.value as any)}
-            >
-              <option value="enrolled">Enrolled</option>
+            <Select label="Student Type" value={studentType} onChange={e => setStudentType(e.target.value as 'regular' | 'evening')}>
               <option value="regular">Regular</option>
-              <option value="irregular">Irregular</option>
-              <option value="dropped">Dropped</option>
-              <option value="graduated">Graduated</option>
+              <option value="evening">Evening</option>
             </Select>
           </div>
 

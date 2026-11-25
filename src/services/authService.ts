@@ -1,7 +1,6 @@
-import { signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
-import { doc, getDocFromServer } from 'firebase/firestore';
+import { EmailAuthProvider, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword, type User } from 'firebase/auth';
+import { doc, getDocFromServer, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { changeAccountPassword } from './accountApi';
 import type { UserProfile } from '../types';
 
 const STUDENT_DOMAIN = 'students.academiahub.invalid';
@@ -56,17 +55,19 @@ export async function logoutUser(): Promise<void> {
 }
 
 export async function updateOwnPassword(current: string, next: string, confirmation: string) {
-  const email = auth?.currentUser?.email;
-  if (!email) throw new Error('Sign in again to change your password.');
-  const {signInAfter} = await changeAccountPassword(current, next, confirmation);
-  // Firebase Auth timestamps have one-second granularity. Start a fresh session past the server cutoff.
-  await new Promise(resolve => setTimeout(resolve, Math.max(1100, Math.min(3000, signInAfter - Date.now() + 50))));
-  try {
-    return await loginWithCredentials(email, next);
-  } catch {
-    await logoutUser();
-    throw new Error('Password changed. Sign in again with your new password.');
+  const session = auth?.currentUser;
+  if (!session?.email || !db) throw new Error('Sign in again to change your password.');
+  if (next !== confirmation || next === current || !isStrongPassword(next)) {
+    throw new Error(PASSWORD_GUIDANCE);
   }
+  const credential = EmailAuthProvider.credential(session.email, current);
+  await reauthenticateWithCredential(session, credential);
+  await updatePassword(session, next);
+  await updateDoc(doc(db, 'users', session.uid), {
+    mustChangePassword: false,
+    updatedAt: new Date().toISOString(),
+  });
+  return await verifiedProfile(session);
 }
 
 export function authErrorMessage(error: unknown): string {
@@ -82,6 +83,9 @@ export function authErrorMessage(error: unknown): string {
   if (code === 'auth/network-request-failed' || code === 'unavailable' ||
       message.includes('client is offline') || message.includes('failed to get document')) {
     return 'Could not connect to the portal. Check your internet connection and try again.';
+  }
+  if (code === 'internal' || message.includes('internal')) {
+    return 'The staff account could not be created. Verify the account details and try again. If the problem continues, contact the Firebase administrator.';
   }
   return error instanceof Error ? error.message : 'The operation failed. Try again.';
 }

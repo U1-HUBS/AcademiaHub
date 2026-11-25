@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/Badge';
 import { ButtonLink } from '../../components/ui/Button';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { getSchedulesByStudent } from '../../services/scheduleService';
-import { getGradesByStudent, calculateCumulativeGPA } from '../../services/gradeService';
+import { getGradesByStudent, calculateCumulativeGPA, getAcademicAwardStatus } from '../../services/gradeService';
 import { getStudentAttendanceSummary } from '../../services/attendanceService';
 import { getAllAssessments, getSubmissionsByStudent } from '../../services/assessmentService';
 import { BookMarked, Award, CalendarCheck, Clock, MapPin, Sparkles, AlertTriangle, Receipt, CheckSquare } from 'lucide-react';
@@ -44,7 +44,7 @@ export const StudentDashboard: React.FC = () => {
   const totalUnits = schedules.reduce((sum, s) => sum + (s.units || 3), 0);
   const { gpa, totalUnits: gradedUnits } = calculateCumulativeGPA(grades);
   const hasAttendanceRecords = Boolean(attendance?.totalSessions);
-  const gradeStatus = gpa > 0 && gpa <= 1.75 ? "Dean's Lister" : 'Good Standing';
+  const awardStatus = getAcademicAwardStatus(grades);
 
   const pendingAssignments = assessments.filter(
     a => !submissions.some(sub => sub.assessmentId === a.id)
@@ -102,7 +102,7 @@ export const StudentDashboard: React.FC = () => {
           <StatCard
             title="Cumulative GPA"
             value={gradedUnits ? gpa.toFixed(2) : '—'}
-            subtitle={gradedUnits ? gradeStatus : 'No grades posted'}
+            subtitle={gradedUnits ? awardStatus.label : 'No grades posted'}
             icon={<Award className="w-5 h-5" />}
             color="blue"
           />

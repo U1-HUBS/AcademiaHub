@@ -21,6 +21,11 @@ import { StudentEnrollmentPage } from './pages/registrar/StudentEnrollmentPage';
 import { ClassSchedulingPage } from './pages/registrar/ClassSchedulingPage';
 import { ProgramSectionPage } from './pages/registrar/ProgramSectionPage';
 import { RegistrarReportsPage } from './pages/registrar/RegistrarReportsPage';
+import { RegistrarOperationsPage } from './pages/registrar/RegistrarOperationsPage';
+import { GraduationMonitoringPage } from './pages/registrar/GraduationMonitoringPage';
+import { RegistrarWorkflowPage } from './pages/registrar/RegistrarWorkflowPage';
+import { StudentFinancePage } from './pages/registrar/StudentFinancePage';
+import { RegistrarRequestsPage } from './pages/registrar/RegistrarRequestsPage';
 
 // 2. Program Chair Pages (6 Features)
 import { ChairDashboard } from './pages/chair/ChairDashboard';
@@ -29,6 +34,7 @@ import { ChairClassAssignPage } from './pages/chair/ChairClassAssignPage';
 import { ChairScheduleViewerPage } from './pages/chair/ChairScheduleViewerPage';
 import { ChairStudentMonitorPage } from './pages/chair/ChairStudentMonitorPage';
 import { ChairReportsPage } from './pages/chair/ChairReportsPage';
+import { ChairOfferingReviewPage } from './pages/chair/ChairOfferingReviewPage';
 
 // 3. Teacher Pages (6 Features)
 import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
@@ -47,6 +53,8 @@ import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
 import { StudentActivitiesPage } from './pages/student/StudentActivitiesPage';
 import { StudentLedgerPage } from './pages/student/StudentLedgerPage';
 import { StudentChecklistPage } from './pages/student/StudentChecklistPage';
+import { StudentRequestsPage } from './pages/student/StudentRequestsPage';
+import { StudentProgressPage } from './pages/student/StudentProgressPage';
 
 // Root Dispatcher
 const RootRedirect: React.FC = () => {
@@ -60,7 +68,7 @@ const RootRedirect: React.FC = () => {
             <School className="w-7 h-7 text-blue-400" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-[#142D59] tracking-tight">AcademiaHub</h2>
+          <h2 className="text-xl font-bold text-blue tracking-tight">AUTOMATE</h2>
             <p className="text-xs text-slate-500 font-medium">Connecting to Academic Management System...</p>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-[#2563EB] bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
@@ -105,19 +113,26 @@ function App() {
                   <Route path="/registrar/dashboard" element={<RegistrarDashboard />} />
                   <Route path="/registrar/users" element={<UserManagementPage />} />
                   <Route path="/registrar/enrollment" element={<StudentEnrollmentPage />} />
-                  <Route path="/registrar/schedules" element={<ClassSchedulingPage />} />
                   <Route path="/registrar/programs-sections" element={<ProgramSectionPage />} />
                   <Route path="/registrar/reports" element={<RegistrarReportsPage />} />
+                  <Route path="/registrar/operations" element={<RegistrarOperationsPage />} />
+                  <Route path="/registrar/graduation" element={<GraduationMonitoringPage />} />
+                  <Route path="/registrar/academic" element={<ProgramSectionPage />} />
+                  <Route path="/registrar/grades" element={<RegistrarWorkflowPage mode="grades" />} />
+                  <Route path="/registrar/requests" element={<RegistrarRequestsPage />} />
+                  <Route path="/registrar/credentials" element={<RegistrarWorkflowPage mode="credentials" />} />
+                  <Route path="/registrar/finance" element={<StudentFinancePage />} />
                 </Route>
 
                 {/* 2. Program Chair Routes */}
                 <Route element={<RoleGuard allowedRoles={['program_chair']} />}>
                   <Route path="/chair/dashboard" element={<ChairDashboard />} />
                   <Route path="/chair/students" element={<ChairStudentManagePage />} />
-                  <Route path="/chair/schedules" element={<ChairClassAssignPage />} />
+                  <Route path="/chair/schedules" element={<ClassSchedulingPage />} />
                   <Route path="/chair/schedule-viewer" element={<ChairScheduleViewerPage />} />
                   <Route path="/chair/monitoring" element={<ChairStudentMonitorPage />} />
                   <Route path="/chair/reports" element={<ChairReportsPage />} />
+                  <Route path="/chair/offerings" element={<ChairOfferingReviewPage />} />
                 </Route>
 
                 {/* 3. Teacher Routes */}
@@ -140,6 +155,8 @@ function App() {
                   <Route path="/student/activities" element={<StudentActivitiesPage />} />
                   <Route path="/student/ledger" element={<StudentLedgerPage />} />
                   <Route path="/student/checklist" element={<StudentChecklistPage />} />
+                  <Route path="/student/requests" element={<StudentRequestsPage />} />
+                  <Route path="/student/progress" element={<StudentProgressPage />} />
                 </Route>
               </Route>
             </Route>

@@ -10,11 +10,11 @@ interface StatCardProps {
 }
 
 const tones = {
-  navy: 'bg-emerald-50 text-primary',
-  blue: 'bg-teal-50 text-teal-800',
-  emerald: 'bg-green-50 text-green-800',
-  amber: 'bg-amber-50 text-amber-800',
-  purple: 'bg-violet-50 text-violet-800',
+  navy: 'bg-white text-blue border border-blue',
+  blue: 'bg-white text-blue border border-blue',
+  emerald: 'bg-white text-royal border border-royal',
+  amber: 'bg-white text-royal border border-royal',
+  purple: 'bg-white text-blue border border-blue',
 };
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -31,7 +31,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       <p className="break-words text-2xl font-bold tabular-nums tracking-tight text-primary sm:text-3xl">{value}</p>
       {(subtitle || trend) && (
         <p className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 break-words text-xs leading-snug text-slate-600">
-          {trend && <span className={trend.isPositive ? 'font-semibold text-emerald-800' : 'font-semibold text-rose-700'}>{trend.value}</span>}
+          {trend && <span className={trend.isPositive ? 'font-semibold text-royal' : 'font-semibold text-navy'}>{trend.value}</span>}
           {subtitle && <span>{subtitle}</span>}
         </p>
       )}

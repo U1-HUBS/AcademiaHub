@@ -356,13 +356,16 @@ export function makeAccounts(db, auth, verifyCurrentPassword) {
     const input = request.data ?? {};
     if (!STAFF_ROLES.includes(input.role)) throw new HttpsError('invalid-argument', 'Student accounts are created during enrollment.');
     const identity = person(input);
+    const initialPassword = password(input.password);
+    if (initialPassword !== input.confirmPassword) {
+      throw new HttpsError('invalid-argument', 'Make sure both password entries match.');
+    }
     const uid = 'staff-' + hash(identity.email);
     return lock(uid, async () => {
       const emailMatches = await users.where('email', '==', identity.email).limit(1).get();
       if (!emailMatches.empty || (await users.doc(uid).get()).exists) {
         throw new HttpsError('already-exists', 'An account with this email address already exists.');
       }
-      const initialPassword = temporaryPassword();
       const assignment = await staffAssignment(input);
       await stageAuth(uid, identity.email, identity.fullName, initialPassword);
       const prefix = {registrar: 'REG', program_chair: 'CHR', teacher: 'TCH'}[input.role];
@@ -371,7 +374,7 @@ export function makeAccounts(db, auth, verifyCurrentPassword) {
         createdAt: nowIso(), updatedAt: nowIso()});
       await auth.updateUser(uid, {disabled: false});
       await users.doc(uid).update({authProvisioned: true});
-      return {username: identity.email, temporaryPassword: initialPassword};
+      return {username: identity.email};
     });
   }
 

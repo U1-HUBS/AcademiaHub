@@ -15,7 +15,7 @@ export function PasswordField({label, ...props}: PasswordFieldProps) {
       rightIcon={(
         <button
           type="button"
-          className="grid size-8 place-items-center rounded-md text-[#142D59] hover:bg-blue-50"
+          className="auth-password-toggle grid size-8 place-items-center rounded-md text-navy focus-visible:outline-2 focus-visible:outline-royal"
           aria-label={(visible ? 'Hide ' : 'Show ') + label.toLowerCase()}
           aria-pressed={visible}
           onClick={() => setVisible(value => !value)}

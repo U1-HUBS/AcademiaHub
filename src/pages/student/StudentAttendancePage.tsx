@@ -36,7 +36,8 @@ export const StudentAttendancePage: React.FC = () => {
         getAllAttendanceSessions(),
         getStudentAttendanceSummary(user.uid),
       ]);
-      setOverallSummary(overall);
+      // Do not present the calculated 100% default as a real attendance record.
+      setOverallSummary(overall.totalSessions > 0 ? overall : null);
 
       const items: SubjectAttendanceItem[] = await Promise.all(
         myScheds.map(async sched => {
@@ -59,7 +60,8 @@ export const StudentAttendancePage: React.FC = () => {
         })
       );
 
-      setSubjectItems(items);
+      // Only show classes with an actual recorded attendance session.
+      setSubjectItems(items.filter(item => item.recentSessions.length > 0));
     } finally {
       setLoading(false);
     }

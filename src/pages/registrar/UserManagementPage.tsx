@@ -4,10 +4,11 @@ import { Table } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { PasswordField } from '../../components/ui/PasswordField';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { AccountDialog, CredentialsDialog } from '../../components/ui/AccountDialog';
-import { provisionExistingStaff, type TemporaryCredentials } from '../../services/accountApi';
+import { CredentialsDialog } from '../../components/ui/AccountDialog';
+import type { TemporaryCredentials } from '../../services/accountApi';
 import { RoleBadge } from '../../components/ui/RoleBadge';
 import { useToast } from '../../context/ToastContext';
 import {
@@ -17,8 +18,9 @@ import {
   toggleUserStatus,
 } from '../../services/userService';
 import { getAllPrograms } from '../../services/programService';
+import { authErrorMessage, isStrongPassword } from '../../services/authService';
 import { UserProfile, UserRole, Program } from '../../types';
-import { UserPlus, Edit2, KeyRound, Power } from 'lucide-react';
+import { UserPlus, Edit2, Power } from 'lucide-react';
 
 export const UserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -38,13 +40,12 @@ export const UserManagementPage: React.FC = () => {
   const [role, setRole] = useState<UserRole>('teacher');
   const [programId, setProgramId] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [credentials, setCredentials] = useState<TemporaryCredentials | null>(null);
   const [formError, setFormError] = useState('');
-  const [legacyStaff, setLegacyStaff] = useState<UserProfile | null>(null);
-  const [legacyBusy, setLegacyBusy] = useState(false);
-  const [legacyError, setLegacyError] = useState('');
   const { success, error } = useToast();
 
   const loadData = useCallback(async () => {
@@ -73,6 +74,8 @@ export const UserManagementPage: React.FC = () => {
     setRole('teacher');
     setProgramId(programs[0]?.id || '');
     setPhone('');
+    setPassword('');
+    setConfirmPassword('');
     setIsModalOpen(true);
   };
 
@@ -85,6 +88,8 @@ export const UserManagementPage: React.FC = () => {
     setRole(user.role);
     setProgramId(user.programId || '');
     setPhone(user.phone || '');
+    setPassword('');
+    setConfirmPassword('');
     setIsModalOpen(true);
   };
 
@@ -94,38 +99,32 @@ export const UserManagementPage: React.FC = () => {
     setFormError('');
     setIsSubmitting(true);
     try {
-      const details = {firstName, lastName, email, programId, phone};
+      const details = {
+        firstName,
+        lastName,
+        email,
+        programId,
+        programCode: role === 'program_chair' ? programs.find(program => program.id === programId)?.code || '' : '',
+        phone,
+      };
       if (editingUser) {
         await updateUser(editingUser.uid, {...details, role});
         success('User account updated.');
       } else {
         if (role === 'student') throw new Error('Create student accounts through enrollment.');
-        setCredentials(await createUser({...details, role}));
+        if (!isStrongPassword(password)) {
+          throw new Error('Use at least 12 characters with uppercase, lowercase, a number, and a symbol.');
+        }
+        if (password !== confirmPassword) throw new Error('Make sure both password entries match.');
+        await createUser({...details, role, password, confirmPassword});
         success('Staff account created.');
       }
       setIsModalOpen(false);
       await loadData();
     } catch (cause) {
-      setFormError(cause instanceof Error ? cause.message : 'Could not save the user account.');
+      setFormError(authErrorMessage(cause));
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleLegacyProvision = async () => {
-    if (!legacyStaff || legacyBusy) return;
-    setLegacyError('');
-    setLegacyBusy(true);
-    try {
-      const issued = await provisionExistingStaff(legacyStaff.uid);
-      setLegacyStaff(null);
-      setCredentials(issued);
-      success('Staff sign-in configured.');
-      await loadData();
-    } catch (cause) {
-      setLegacyError(cause instanceof Error ? cause.message : 'Could not set up staff sign-in.');
-    } finally {
-      setLegacyBusy(false);
     }
   };
 
@@ -174,7 +173,12 @@ export const UserManagementPage: React.FC = () => {
       header: 'Program / Section',
       render: (u: UserProfile) => (
         <span className="text-xs text-slate-600">
-          {u.programCode ? `${u.programCode} ${u.sectionName ? `(${u.sectionName})` : ''}` : '—'}
+          {(() => {
+            const assignedProgram = u.programId ? programs.find(program => program.id === u.programId) : undefined;
+            const programLabel = u.programCode || assignedProgram?.code;
+            if (!programLabel) return '—';
+            return `${programLabel}${assignedProgram?.name ? ` - ${assignedProgram.name}` : ''}${u.sectionName ? ` (${u.sectionName})` : ''}`;
+          })()}
         </span>
       ),
     },
@@ -192,12 +196,6 @@ export const UserManagementPage: React.FC = () => {
       header: 'Actions',
       render: (u: UserProfile) => (
         <div className="flex flex-wrap items-center gap-1.5">
-          {u.role !== 'student' && u.status === 'active' && !u.authProvisioned && (
-            <Button type="button" variant="ghost" size="sm" icon={<KeyRound className="size-4" />}
-              onClick={() => { setLegacyError(''); setLegacyStaff(u); }}>
-              Set up sign-in
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="sm"
@@ -262,18 +260,6 @@ export const UserManagementPage: React.FC = () => {
         searchPlaceholder="Search by name, email, or ID number..."
       />
 
-      {legacyStaff && (
-        <AccountDialog title="Set up staff sign-in?" busy={legacyBusy} onClose={() => setLegacyStaff(null)}>
-          <p className="text-sm text-slate-700">
-            Create Firebase sign-in credentials for {legacyStaff.fullName} using their existing account record.
-          </p>
-          {legacyError && <p role="alert" className="mt-3 text-sm text-rose-700">{legacyError}</p>}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <Button variant="outline" disabled={legacyBusy} onClick={() => setLegacyStaff(null)}>Cancel</Button>
-            <Button isLoading={legacyBusy} onClick={handleLegacyProvision}>Set up sign-in</Button>
-          </div>
-        </AccountDialog>
-      )}
       {credentials && <CredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />}
 
       {/* User Modal */}
@@ -310,6 +296,27 @@ export const UserManagementPage: React.FC = () => {
             placeholder="j.doe@example.edu"
             required={editingUser?.role !== 'student'}
           />
+
+          {!editingUser && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PasswordField
+                label="Password"
+                name="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                required
+              />
+              <PasswordField
+                label="Confirm Password"
+                name="confirmPassword"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={event => setConfirmPassword(event.target.value)}
+                required
+              />
+            </div>
+          )}
 
           {editingUser?.role === 'student' ? (
             <p className="rounded-lg bg-blue-50 p-3 text-sm text-[#142D59]">

@@ -19,11 +19,13 @@ interface TableProps<T> {
   searchPlaceholder?: string;
   emptyMessage?: string;
   actions?: React.ReactNode;
+  onRowClick?: (item: T) => void;
 }
 
 export function Table<T>({
   label, data, columns, keyExtractor, searchTerm, onSearchChange,
   searchPlaceholder = 'Search records…', emptyMessage = 'No records found.', actions,
+  onRowClick,
 }: TableProps<T>) {
   const searchRef = useRef<HTMLInputElement>(null);
   const hasSearch = Boolean(searchTerm?.trim());
@@ -57,7 +59,7 @@ export function Table<T>({
       <div role="region" aria-label={label} tabIndex={0} className="overflow-x-auto rounded-lg focus-visible:outline-offset-[-2px]">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">{label}</caption>
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
+          <thead className="border-b border-slate-200 bg-white text-xs font-semibold uppercase tracking-wide text-navy">
             <tr>
               {columns.map(column => (
                 <th key={column.key} scope="col" className={`px-4 py-3 sm:px-5 ${column.className ?? ''}`}>
@@ -80,7 +82,18 @@ export function Table<T>({
               </tr>
             ) : (
               data.map(item => (
-                <tr key={keyExtractor(item)} className="transition-colors hover:bg-slate-50 focus-within:bg-slate-50">
+                <tr
+                  key={keyExtractor(item)}
+                  onClick={onRowClick ? () => onRowClick(item) : undefined}
+                  onKeyDown={onRowClick ? event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onRowClick(item);
+                    }
+                  } : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  className={`focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#2563EB] ${onRowClick ? 'cursor-pointer' : ''}`}
+                >
                   {columns.map(column => (
                     <td key={column.key} className={`px-4 py-3 text-slate-700 sm:px-5 ${column.className ?? ''}`}>
                       {column.render ? column.render(item) : (item as Record<string, React.ReactNode>)[column.key]}

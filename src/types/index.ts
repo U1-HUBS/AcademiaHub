@@ -11,6 +11,7 @@ export interface UserProfile {
   programId?: string; // For program_chair and student
   programCode?: string;
   yearLevel?: number; // 1, 2, 3, 4 (for students)
+  studentType?: 'regular' | 'evening';
   sectionId?: string;
   sectionName?: string;
   phone?: string;
@@ -54,13 +55,27 @@ export interface Subject {
   title: string; // Data Structures and Algorithms
   units: number; // e.g. 3
   lectureHours: number;
-  labHours: number;
+  labHours?: number; // Legacy field retained for existing records; no longer collected in the UI
   programId: string;
   programCode: string;
-  yearLevel?: number; // 1, 2, 3, 4
+  yearLevel?: number; // 1, 2, 3, 4, 5
+  studentType?: 'regular' | 'evening';
+  curriculumId?: string;
   semester?: '1st Semester' | '2nd Semester' | 'Summer';
   prerequisites?: string[];
   description?: string;
+}
+
+export interface Curriculum {
+  id: string;
+  programId: string;
+  programCode: string;
+  studentType: 'regular' | 'evening';
+  durationYears: 4 | 5;
+  maxUnitsPerSemester: 18 | 27;
+  subjectIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Schedule {
@@ -75,6 +90,7 @@ export interface Schedule {
   programCode: string;
   sectionId: string;
   sectionName: string;
+  studentType?: 'regular' | 'evening';
   room: string;
   days: string[]; // e.g. ['Monday', 'Wednesday', 'Friday']
   startTime: string; // HH:mm format e.g. '08:00'
@@ -97,7 +113,8 @@ export interface EnrollmentRecord {
   yearLevel: number;
   sectionId: string;
   sectionName: string;
-  status: 'enrolled' | 'regular' | 'irregular' | 'dropped' | 'graduated';
+  studentType?: 'regular' | 'evening';
+  status: 'for_assessment' | 'pending' | 'enrolled' | 'regular' | 'irregular' | 'dropped' | 'cancelled' | 'graduated';
   academicYear: string;
   semester: string;
   enrolledAt: string;
@@ -175,6 +192,9 @@ export interface StudentGrade {
   computedRating?: number; // Weighted final score 0-100
   letterGrade?: string; // 1.0, 1.25, 1.5, ... or A, B, C, D, F
   remarks: 'Passed' | 'Failed' | 'Incomplete' | 'In Progress';
+  verificationStatus?: 'submitted' | 'verified' | 'returned';
+  verifiedBy?: string;
+  verificationRemarks?: string;
   submittedBy: string;
   updatedAt: string;
 }
@@ -200,6 +220,28 @@ export interface ConflictCheckResult {
   type?: 'room' | 'teacher' | 'section';
   message?: string;
   conflictingSchedule?: Schedule;
+}
+
+export type RegistrarRequestStatus = 'submitted' | 'approved' | 'under_review' | 'for_compliance' | 'processing' | 'ready_for_pickup' | 'released' | 'denied';
+export type EnrollmentWorkflowStatus = 'for_assessment' | 'pending' | 'enrolled' | 'cancelled';
+export type OfferingStatus = 'proposed' | 'revision_requested' | 'approved' | 'closed';
+
+export interface SubjectOffering {
+  id: string; subjectId: string; subjectCode: string; subjectTitle: string; units: number;
+  programId: string; programCode: string; yearLevel: number; academicYear: string;
+  semester: string; demandNote?: string; status: OfferingStatus; reviewedBy?: string;
+  reviewRemarks?: string; createdAt: string; updatedAt: string;
+}
+
+export interface RegistrarWorkflowRequest {
+  id: string; type: 'add_drop' | 'document'; studentId: string; studentName: string;
+  title: string; details: string; status: RegistrarRequestStatus; remarks?: string;
+  expectedDate?: string; reviewedBy?: string; reviewedAt?: string; createdAt: string; updatedAt: string;
+}
+
+export interface CredentialRequirement {
+  id: string; studentId: string; studentName: string; requirement: string;
+  status: 'missing' | 'submitted' | 'verified'; remarks?: string; updatedAt: string;
 }
 
 // -------------------------------------------------------------
@@ -233,6 +275,28 @@ export interface StudentLedger {
   remainingBalance: number;
   status: 'paid' | 'partial' | 'unpaid';
   transactions: LedgerTransaction[];
+  subjectCharges?: LedgerSubjectCharge[];
+  updatedAt: string;
+}
+
+export interface LedgerSubjectCharge {
+  subjectId: string;
+  subjectCode: string;
+  subjectTitle: string;
+  units: number;
+  tuition: number;
+  laboratory: number;
+}
+
+export interface TuitionFeeConfiguration {
+  id: string;
+  academicYear: string;
+  semester: string;
+  tuitionPerUnit: number;
+  laboratoryFeePerSubject: number;
+  miscellaneousFee: number;
+  otherCharges: number;
+  updatedBy?: string;
   updatedAt: string;
 }
 

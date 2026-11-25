@@ -1,6 +1,11 @@
-import { StudentLedger, LedgerTransaction } from '../types';
+import { StudentLedger, LedgerTransaction, UserProfile } from '../types';
 import { fetchCollection, fetchDocById, saveDoc } from './storage';
-import { ensureStudentLedger } from './accountApi';
+import { auth, db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getAllEnrollments } from './enrollmentService';
+import { getAllSubjects } from './subjectService';
+import { getFeeConfiguration } from './feeService';
+import { getAllSchedules } from './scheduleService';
 
 export async function getAllLedgers(): Promise<StudentLedger[]> {
   return fetchCollection<StudentLedger>('ledgers');
@@ -12,7 +17,17 @@ export async function getStudentLedger(studentId: string): Promise<StudentLedger
 }
 
 // Legacy accounts can initialize a missing ledger through their verified Firebase session.
-export const initializeStudentLedger = ensureStudentLedger;
+export async function initializeStudentLedger(): Promise<StudentLedger> {
+  if (!auth?.currentUser || !db) throw new Error('Sign in again to initialize your ledger.');
+  const existing = await getStudentLedger(auth.currentUser.uid);
+  if (existing) return existing;
+  const profile = (await getDoc(doc(db, 'users', auth.currentUser.uid))).data() as UserProfile | undefined;
+  if (!profile || profile.role !== 'student') throw new Error('Student profile not found.');
+  const now = new Date().toISOString();
+  const ledger: StudentLedger = {id: profile.uid, studentId: profile.uid, studentName: profile.fullName, studentIdNumber: profile.idNumber, programCode: profile.programCode || '', academicYear: '2026-2027', semester: '1st Semester', tuitionFee: 0, miscellaneousFee: 0, otherCharges: 0, totalAssessment: 0, totalPaid: 0, remainingBalance: 0, status: 'paid', transactions: [], updatedAt: now};
+  await setDoc(doc(db, 'ledgers', profile.uid), ledger, {merge: true});
+  return ledger;
+}
 
 /**
  * Records an official payment transaction made to the student ledger (Registrar action)
@@ -107,4 +122,34 @@ export async function addLedgerCharge(
 
   await saveDoc('ledgers', studentId, updatedLedger);
   return updatedLedger;
+}
+
+/** Rebuilds assessment lines from official enrollment without duplicating charges. */
+export async function recalculateStudentLedger(studentId: string, academicYear: string, semester: string, persist = true): Promise<StudentLedger> {
+  const [ledger, enrollments, subjects, schedules, config] = await Promise.all([
+    getStudentLedger(studentId), getAllEnrollments(), getAllSubjects(), getAllSchedules(), getFeeConfiguration(academicYear, semester),
+  ]);
+  if (!ledger) throw new Error('Ledger record not found for student.');
+  if (!config) return ledger;
+  const official = enrollments.filter(item => item.studentId === studentId && item.academicYear === academicYear && item.semester === semester && ['enrolled', 'regular', 'irregular'].includes(item.status));
+  const enrolledScheduleSubjectIds = new Set(schedules.filter(schedule => schedule.enrolledStudentIds.includes(studentId) && schedule.academicYear === academicYear && schedule.semester === semester).map(schedule => schedule.subjectId));
+  const enrolledSubjects = subjects.filter(subject => enrolledScheduleSubjectIds.has(subject.id));
+  const units = enrolledSubjects.reduce((sum, subject) => sum + subject.units, 0);
+  const tuitionFee = Number((units * config.tuitionPerUnit).toFixed(2));
+  const laboratoryFee = Number((enrolledSubjects.filter(subject => (subject.labHours || 0) > 0).length * config.laboratoryFeePerSubject).toFixed(2));
+  const subjectCharges = enrolledSubjects.map(subject => ({subjectId: subject.id, subjectCode: subject.code, subjectTitle: subject.title, units: subject.units, tuition: Number((subject.units * config.tuitionPerUnit).toFixed(2)), laboratory: Number(((subject.labHours || 0) > 0 ? config.laboratoryFeePerSubject : 0).toFixed(2))}));
+  const totalAssessment = Number((tuitionFee + laboratoryFee + config.miscellaneousFee + config.otherCharges).toFixed(2));
+  const assessmentTransactions = ledger.transactions.filter(item => item.type === 'assessment' && item.academicYear === academicYear && item.semester === semester && item.category !== 'tuition' && item.category !== 'laboratory' && item.category !== 'miscellaneous' && item.category !== 'registration');
+  const now = new Date().toISOString();
+  const newTransactions: LedgerTransaction[] = [
+    {id: `assessment-${studentId}-${academicYear}-${semester}`, date: now.slice(0, 10), referenceNo: `ASSESS-${academicYear}-${semester}`, type: 'assessment', category: 'tuition', description: `Tuition (${units} units × ₱${config.tuitionPerUnit.toLocaleString()})`, amount: tuitionFee, academicYear, semester},
+    {id: `laboratory-${studentId}-${academicYear}-${semester}`, date: now.slice(0, 10), referenceNo: `LAB-${academicYear}-${semester}`, type: 'assessment', category: 'laboratory', description: 'Laboratory fees', amount: laboratoryFee, academicYear, semester},
+    {id: `miscellaneous-${studentId}-${academicYear}-${semester}`, date: now.slice(0, 10), referenceNo: `MISC-${academicYear}-${semester}`, type: 'assessment', category: 'miscellaneous', description: 'Miscellaneous fees', amount: config.miscellaneousFee, academicYear, semester},
+  ];
+  const kept = ledger.transactions.filter(item => !(item.type === 'assessment' && ['tuition', 'laboratory', 'miscellaneous'].includes(item.category) && item.academicYear === academicYear && item.semester === semester));
+  const totalPaid = ledger.transactions.filter(item => item.type === 'payment' && item.academicYear === academicYear && item.semester === semester).reduce((sum, item) => sum + item.amount, 0);
+  const remainingBalance = Number(Math.max(0, totalAssessment - totalPaid).toFixed(2));
+  const updated: StudentLedger = {...ledger, academicYear, semester, tuitionFee, miscellaneousFee: config.miscellaneousFee, otherCharges: Number((laboratoryFee + config.otherCharges).toFixed(2)), totalAssessment, totalPaid, remainingBalance, status: remainingBalance <= 0 ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid', subjectCharges, transactions: [...kept, ...assessmentTransactions, ...newTransactions], updatedAt: now};
+  if (persist) await saveDoc('ledgers', studentId, updated);
+  return updated;
 }

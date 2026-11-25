@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { Mail, User, Phone } from 'lucide-react';
-import { setupRegistrar, setupRegistrarClient } from '../../services/accountApi';
+import { setupRegistrarClient } from '../../services/accountApi';
 import { isFirebaseConfigured } from '../../services/firebase';
 import { authErrorMessage, isStrongPassword, PASSWORD_GUIDANCE } from '../../services/authService';
 import { PasswordField } from '../../components/ui/PasswordField';
@@ -25,7 +25,7 @@ export const InitialSetupPage: React.FC = () => {
   const { login } = useAuth();
   const { success } = useToast();
   const navigate = useNavigate();
-  const freeHostedSetup = isFirebaseConfigured && import.meta.env.VITE_FREE_HOSTED_SETUP === 'true' && import.meta.env.VITE_USE_FIREBASE_EMULATORS !== 'true';
+  const freeHostedSetup = isFirebaseConfigured && import.meta.env.VITE_USE_FIREBASE_EMULATORS !== 'true';
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +42,7 @@ export const InitialSetupPage: React.FC = () => {
     setFormError('');
     setIsLoading(true);
     try {
-      if (freeHostedSetup) await setupRegistrarClient({firstName, lastName, email, password, phone});
-      else await setupRegistrar({firstName, lastName, email, password, setupKey, phone});
+      await setupRegistrarClient({firstName, lastName, email, password, phone});
       await login(email, password);
       success('Initial Registrar account configured successfully.');
       navigate('/registrar/dashboard');

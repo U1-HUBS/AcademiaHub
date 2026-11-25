@@ -12,23 +12,23 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, showIcon = true, siz
   const roleConfig = {
     registrar: {
       label: 'Registrar (Admin)',
-      bg: 'bg-navy-50 text-[#142D59] border-[#142D59]/20',
+      bg: 'bg-white text-navy border-navy',
       icon: <ShieldCheck className="w-3.5 h-3.5 text-[#142D59]" />,
     },
     program_chair: {
       label: 'Program Chair',
-      bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      bg: 'bg-white text-navy border-navy',
       icon: <BookOpen className="w-3.5 h-3.5 text-indigo-600" />,
     },
     teacher: {
       label: 'Faculty / Teacher',
-      bg: 'bg-blue-50 text-blue-700 border-blue-200',
+      bg: 'bg-white text-navy border-navy',
       icon: <GraduationCap className="w-3.5 h-3.5 text-blue-600" />,
     },
     student: {
       label: 'Student',
-      bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      icon: <User className="w-3.5 h-3.5 text-emerald-600" />,
+      bg: 'bg-white text-royal border-royal',
+      icon: <User className="w-3.5 h-3.5 text-royal" />,
     },
   };
 

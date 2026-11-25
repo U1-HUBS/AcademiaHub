@@ -1,7 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator, Auth } from 'firebase/auth';
 import { initializeFirestore, getFirestore, connectFirestoreEmulator, Firestore } from 'firebase/firestore';
-import { getFunctions, connectFunctionsEmulator, type Functions } from 'firebase/functions';
 import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
 
 export const firebaseConfig = {
@@ -25,7 +24,6 @@ export const isFirebaseConfigured = Boolean(
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
-let functions: Functions | null = null;
 let analytics: Analytics | null = null;
 
 if (isFirebaseConfigured) {
@@ -39,11 +37,9 @@ if (isFirebaseConfigured) {
       ignoreUndefinedProperties: true,
       experimentalAutoDetectLongPolling: true,
     });
-    functions = getFunctions(app, 'us-central1');
     if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
       connectAuthEmulator(auth, 'http://127.0.0.1:9099', {disableWarnings: true});
       connectFirestoreEmulator(db, '127.0.0.1', 8080);
-      connectFunctionsEmulator(functions, '127.0.0.1', 5001);
     }
     console.log('[AUTOMATE] Connected to live Firebase project:', firebaseConfig.projectId);
 
@@ -64,4 +60,4 @@ if (isFirebaseConfigured) {
   }
 }
 
-export { app, auth, db, functions, analytics };
+export { app, auth, db, analytics };

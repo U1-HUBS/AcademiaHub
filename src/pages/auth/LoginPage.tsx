@@ -50,8 +50,8 @@ export const LoginPage: React.FC = () => {
   if (user && !isLoading) return <Navigate to="/" replace />;
 
   return (
-    <AuthLayout title="Sign in to your portal" description="Students sign in with their Student ID Number. Staff sign in with their institutional email.">
-      <form className="space-y-5" onSubmit={handleLogin}>
+    <AuthLayout title="Sign in to AUTOMATE" description="Access your academic management portal." showEyebrow={false} cardClassName="auth-card-login">
+      <form className="auth-form" onSubmit={handleLogin}>
         <Input
           label="Student ID or institutional email"
           name="username"
@@ -73,17 +73,17 @@ export const LoginPage: React.FC = () => {
           required
         />
         {formError && (
-          <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm leading-relaxed text-rose-800">
+          <p role="alert" className="auth-error">
             {formError}
           </p>
         )}
-        <Button type="submit" className="w-full" isLoading={isLoading} icon={<ArrowRight className="size-4" />}>
-          {isLoading ? 'Signing in…' : 'Sign in'}
+        <Button type="submit" variant="accent" className="auth-submit w-full" isLoading={isLoading} icon={<ArrowRight className="size-4" />}>
+          {isLoading ? 'Signing in...' : 'Sign In'}
         </Button>
       </form>
 
-      <p className="mt-8 border-t border-slate-200 pt-5 text-sm leading-relaxed text-slate-600">
-        Need account access or forgot your password? Contact the Registrar.
+      <p className="auth-help">
+        Need account access or forgot your password? <span>Contact the Registrar.</span>
       </p>
     </AuthLayout>
   );

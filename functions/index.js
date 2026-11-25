@@ -5,6 +5,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { makeAccounts } from './accounts.js';
+import { makeLedgerFunctions } from './ledger.js';
 
 const app = initializeApp();
 const auth = getAuth(app);
@@ -31,6 +32,7 @@ async function verifyCurrentPassword(email, password, uid) {
 }
 
 const accounts = makeAccounts(getFirestore(app), auth, verifyCurrentPassword);
+const ledgers = makeLedgerFunctions(getFirestore(app));
 const options = {region: 'us-central1', timeoutSeconds: 60};
 
 function callable(handler, settings = {}) {
@@ -42,11 +44,18 @@ function callable(handler, settings = {}) {
       if (['auth/email-already-exists', 'auth/uid-already-exists'].includes(error.code)) {
         throw new HttpsError('already-exists', 'This Firebase identity is already in use.');
       }
-      if (error.code === 'auth/invalid-password') {
-        throw new HttpsError('invalid-argument', 'Firebase did not accept this password.');
+      if (['auth/invalid-password', 'auth/password-does-not-meet-requirements'].includes(error.code)) {
+        throw new HttpsError('invalid-argument', 'Firebase did not accept this password. Use at least 12 characters with uppercase, lowercase, a number, and a symbol.');
+      }
+      if (error.code === 'auth/invalid-email') {
+        throw new HttpsError('invalid-argument', 'Enter a valid institutional email address.');
+      }
+      if (error.code === 'auth/operation-not-allowed') {
+        throw new HttpsError('failed-precondition', 'Email and password sign-in is not enabled in Firebase Authentication.');
       }
       if (error.code === 6) throw new HttpsError('already-exists', 'The record already exists.');
       // Never log callable payloads or Firebase Auth error bodies, which may contain submitted values.
+      console.error('[account-operation-failed]', {code: error.code || 'unknown', name: error.name || 'Error'});
       throw new HttpsError('internal', 'The account operation failed. Check the record before trying again.');
     }
   });
@@ -60,6 +69,8 @@ export const createStaffAccount = callable(accounts.createStaff);
 export const updateAccountProfile = callable(accounts.updateProfile);
 export const provisionExistingStaff = callable(accounts.provisionLegacyStaff);
 export const ensureStudentLedger = callable(accounts.ensureLedger);
+export const reconcileStudentLedger = callable(ledgers.reconcile);
+export const recordStudentPayment = callable(ledgers.recordPayment);
 
 export const setupRegistrar = callable(request => {
   const configuredKey = setupKey.value() || '';

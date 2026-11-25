@@ -12,7 +12,7 @@ export async function getGradesBySchedule(scheduleId: string): Promise<StudentGr
 
 export async function getGradesByStudent(studentId: string): Promise<StudentGrade[]> {
   const all = await getAllGrades();
-  return all.filter(g => g.studentId === studentId);
+  return all.filter(g => g.studentId === studentId && (g.verificationStatus === undefined || g.verificationStatus === 'verified'));
 }
 
 /**
@@ -93,12 +93,17 @@ export async function saveOrUpdateGrade(data: {
     computedRating: calc.computedRating,
     letterGrade: calc.letterGrade,
     remarks: calc.remarks,
+    verificationStatus: 'submitted',
     submittedBy: data.submittedBy,
     updatedAt: new Date().toISOString(),
   };
 
   await saveDoc('grades', id, gradeDoc);
   return gradeDoc;
+}
+
+export async function updateGradeVerification(id: string, updates: Pick<StudentGrade, 'verificationStatus' | 'verifiedBy' | 'verificationRemarks'>) {
+  await updateDocById('grades', id, {...updates, updatedAt: new Date().toISOString()});
 }
 
 /**
@@ -122,4 +127,14 @@ export function calculateCumulativeGPA(grades: StudentGrade[]): { gpa: number; t
 
   const gpa = totalUnits > 0 ? Number((totalQualityPoints / totalUnits).toFixed(2)) : 0;
   return { gpa, totalUnits };
+}
+
+export function getAcademicAwardStatus(grades: StudentGrade[]): {qualified: boolean; label: string; reason: string; awards: string[]} {
+  const {gpa, totalUnits} = calculateCumulativeGPA(grades);
+  const hasFailure = grades.some(item => item.remarks === 'Failed' || item.remarks === 'Incomplete');
+  if (!grades.length) return {qualified: false, label: 'No award assessment', reason: 'No verified grades are available.', awards: []};
+  if (hasFailure) return {qualified: false, label: 'Not qualified', reason: 'A failed or incomplete subject is present.', awards: []};
+  if (totalUnits < 18) return {qualified: false, label: 'In progress', reason: 'At least 18 verified units are required for this assessment.', awards: []};
+  const awards = gpa <= 1.25 ? ["President's Lister", "Dean's Lister", 'Academic Excellence Award'] : gpa <= 1.75 ? ["Dean's Lister"] : [];
+  return {qualified: awards.length > 0, label: awards[0] || 'Good standing', reason: `Verified GPA: ${gpa.toFixed(2)}`, awards};
 }

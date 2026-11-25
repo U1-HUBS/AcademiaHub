@@ -22,21 +22,21 @@ export const Topbar: React.FC<TopbarProps> = ({ menuOpen, onOpenMenu }) => {
         <button
           type="button"
           onClick={onOpenMenu}
-          className="grid size-10 shrink-0 place-items-center rounded-lg text-primary transition-colors hover:bg-emerald-50 lg:hidden"
+          className="grid size-10 shrink-0 place-items-center rounded-lg text-primary lg:hidden"
           aria-label="Open navigation"
           aria-controls="portal-navigation"
           aria-expanded={menuOpen}
         >
           <Menu className="size-5" aria-hidden="true" />
         </button>
-        <span className="truncate text-sm font-bold tracking-tight text-primary max-[359px]:text-[13px] lg:hidden">AcademiaHub</span>
+        <span className="truncate text-sm font-bold tracking-tight text-primary max-[359px]:text-[13px] lg:hidden">AUTOMATE</span>
         <span className="hidden text-sm font-semibold text-slate-600 lg:block">Academic workspace</span>
       </div>
 
       {user && (
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
           <div className="hidden min-w-0 items-center gap-2.5 sm:flex">
-            <div aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-xs font-bold text-primary">
+            <div aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-royal text-xs font-bold text-white">
               {initials}
             </div>
             <div className="min-w-0 leading-tight">
